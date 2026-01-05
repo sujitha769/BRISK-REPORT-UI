@@ -29,7 +29,7 @@ const getBrowser = async () => {
       '--disable-features=IsolateOrigins,site-per-process'
     ],
     // Add these for Render compatibility
-    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+   
     timeout: 60000
   });
 
