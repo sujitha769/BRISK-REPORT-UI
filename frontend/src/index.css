@@ -1,0 +1,11 @@
+.sv-header {
+  width: 100%;
+  padding: 14px 20px;
+  margin-bottom: 20px;
+  font-size: 28px;
+  font-weight: 800;
+  border-bottom: 3px solid #f4c430;
+}
+
+.sv-blue { color: #2f3fa0; }
+.sv-yellow { color: #f4c430; margin-left: 4px; }
