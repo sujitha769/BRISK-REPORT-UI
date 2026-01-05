@@ -12,20 +12,30 @@ const getBrowser = async () => {
     return browserLaunchPromise;
   }
 
+  console.log('🚀 Launching browser...');
+
   browserLaunchPromise = puppeteer.launch({
-    headless: "new",
+    headless: 'new',
     args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage",
-      "--disable-gpu",
-      "--disable-web-security",
-      "--disable-features=IsolateOrigins,site-per-process"
-    ]
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--no-first-run',
+      '--no-zygote',
+      '--single-process', // CRITICAL for Render
+      '--disable-extensions',
+      '--disable-web-security',
+      '--disable-features=IsolateOrigins,site-per-process'
+    ],
+    // Add these for Render compatibility
+    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+    timeout: 60000
   });
 
   try {
     browserInstance = await browserLaunchPromise;
+    console.log('✅ Browser launched successfully');
     
     browserInstance.on('disconnected', () => {
       console.log("⚠️ Browser disconnected");
@@ -34,6 +44,10 @@ const getBrowser = async () => {
     });
 
     return browserInstance;
+  } catch (error) {
+    console.error('❌ Browser launch failed:', error.message);
+    browserLaunchPromise = null;
+    throw error;
   } finally {
     browserLaunchPromise = null;
   }
@@ -61,9 +75,9 @@ export const generatePDF = async (req, res) => {
     
     console.log("📄 Page created");
 
-    // Set no timeout
-    await page.setDefaultTimeout(0);
-    await page.setDefaultNavigationTimeout(0);
+    // Set timeouts
+    await page.setDefaultTimeout(60000);
+    await page.setDefaultNavigationTimeout(60000);
 
     await page.setViewport({
       width: 1200,
@@ -73,7 +87,7 @@ export const generatePDF = async (req, res) => {
 
     console.log("🔄 Setting content...");
 
-    // FIX: Use setContent directly - it's more reliable for large HTML
+    // Set content with timeout
     await page.setContent(htmlContent, {
       waitUntil: "networkidle0",
       timeout: 60000
@@ -81,34 +95,33 @@ export const generatePDF = async (req, res) => {
 
     console.log("✅ Content loaded");
 
-    // Wait for any charts/images to render
+    // Wait for charts/images to render
     await page.evaluate(() => {
-      return new Promise(resolve => setTimeout(resolve, 3000));
+      return new Promise(resolve => setTimeout(resolve, 2000));
     });
 
     console.log("📸 Generating PDF...");
 
     const pdfBuffer = await page.pdf({
-       format: "A4",
-    
+      format: "A4",
       printBackground: true,
       displayHeaderFooter: true,
 
-     headerTemplate: `
-  <div style="
-    width:100%;
-    font-size:10px;
-    padding:6px 40px;
-    box-sizing:border-box;
-    color:#333;
-    border-bottom:1px solid #e5e7eb;
-    font-family:Arial, sans-serif;
-  ">
-    <span style="font-weight:600">
-    <span style="color:#1d1ac9ff">STARTUP</span><span style="color: #FFFF00">VISORS</span>
-    </span>
-  </div>
-`,
+      headerTemplate: `
+        <div style="
+          width:100%;
+          font-size:10px;
+          padding:6px 40px;
+          box-sizing:border-box;
+          color:#333;
+          border-bottom:1px solid #e5e7eb;
+          font-family:Arial, sans-serif;
+        ">
+          <span style="font-weight:600">
+            <span style="color:#1d1ac9ff">STARTUP</span><span style="color: #FFFF00">VISORS</span>
+          </span>
+        </div>
+      `,
 
       footerTemplate: `
         <div style="
@@ -136,7 +149,7 @@ export const generatePDF = async (req, res) => {
         right: "8mm"
       },
 
-      timeout: 0
+      timeout: 60000
     });
 
     res.setHeader("Content-Type", "application/pdf");
@@ -153,7 +166,10 @@ export const generatePDF = async (req, res) => {
     console.error("❌ Stack:", error.stack);
     
     if (!res.headersSent) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ 
+        error: "Failed to generate PDF",
+        details: error.message 
+      });
     }
 
   } finally {
