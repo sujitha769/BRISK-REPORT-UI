@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 
-// import Header from "./components/Headers";
+
 import VerifyCompany from "./pages/VerifyCompany";
 import ReportPage from "./pages/ReportPage";
 
