@@ -17,10 +17,51 @@ dotenv.config();
 
 const app = express();
 
+// =====================================================
+// CORS Configuration - UPDATED
+// =====================================================
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://localhost:5000',
+  'https://briskreport.netlify.app/', // Replace with your actual Netlify URL
+  'https://main--briskreport.netlify.app', // If you have a branch preview
+];
+
+// Add environment variable for frontend URL
+if (process.env.FRONTEND_URL) {
+  allowedOrigins.push(process.env.FRONTEND_URL);
+}
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Check if the origin is in the allowed list or matches Netlify pattern
+    if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.netlify.app')) {
+      callback(null, true);
+    } else {
+      console.log('Blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'user-key'],
+  exposedHeaders: ['Content-Length', 'Content-Type'],
+  maxAge: 86400 // 24 hours
+}));
+
 // Middleware - Increased payload limit for PDF generation
-app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// Request logging middleware
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+  next();
+});
 
 // // Routes
 // app.use("/api/auth", authRoutes);
@@ -28,7 +69,12 @@ app.use("/api/pdf", pdfRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Server is running' });
+  res.json({ 
+    status: 'OK', 
+    message: 'Server is running',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development'
+  });
 });
 
 const PORT = process.env.PORT || 5000;
@@ -48,7 +94,8 @@ app.get("/api/report/:orderId", async (req, res) => {
         headers: {
           "user-key": process.env.BRISK_API_KEY,
           Accept: "application/json"
-        }
+        },
+        timeout: 30000 // 30 second timeout
       }
     );
 
@@ -58,7 +105,10 @@ app.get("/api/report/:orderId", async (req, res) => {
       "BRisk GetStatus Error:",
       error.response?.data || error.message
     );
-    res.status(500).json({ error: "Failed to fetch BRisk report status" });
+    res.status(error.response?.status || 500).json({ 
+      error: "Failed to fetch BRisk report status",
+      details: error.message
+    });
   }
 });
 
@@ -78,7 +128,8 @@ app.get("/api/report/:orderId/download", async (req, res) => {
           "user-key": process.env.BRISK_API_KEY,
           Accept: "*/*"
         },
-        responseType: "arraybuffer"
+        responseType: "arraybuffer",
+        timeout: 60000 // 60 second timeout for large PDFs
       }
     );
 
@@ -98,16 +149,36 @@ app.get("/api/report/:orderId/download", async (req, res) => {
       "BRisk DownloadReport Error:",
       error.response?.data || error.message
     );
-    res.status(500).json({ error: "Download failed" });
+    res.status(error.response?.status || 500).json({ 
+      error: "Download failed",
+      details: error.message
+    });
   }
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({
+    error: 'Not Found',
+    message: `Route ${req.method} ${req.path} not found`
+  });
 });
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({
+  console.error('Error:', err.stack);
+  
+  // CORS error
+  if (err.message === 'Not allowed by CORS') {
+    return res.status(403).json({
+      error: 'CORS Error',
+      message: 'Origin not allowed'
+    });
+  }
+  
+  res.status(err.status || 500).json({
     error: 'Internal Server Error',
-    message: err.message
+    message: process.env.NODE_ENV === 'production' ? 'Something went wrong' : err.message
   });
 });
 
@@ -117,5 +188,7 @@ app.use((err, req, res, next) => {
  * =====================================================
  */
 app.listen(PORT, () => {
-  console.log(`Backend running on http://localhost:${PORT}`);
+  console.log(`✅ Backend running on http://localhost:${PORT}`);
+  console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🌐 Allowed origins:`, allowedOrigins);
 });
