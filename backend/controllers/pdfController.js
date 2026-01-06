@@ -14,24 +14,43 @@ const getBrowser = async () => {
 
   console.log('🚀 Launching browser...');
 
-  browserLaunchPromise = puppeteer.launch({
-    headless: 'new',
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-gpu',
-      '--no-first-run',
-      '--no-zygote',
-      '--single-process', // CRITICAL for Render
-      '--disable-extensions',
-      '--disable-web-security',
-      '--disable-features=IsolateOrigins,site-per-process'
-    ],
-    // Add these for Render compatibility
+  // browserLaunchPromise = puppeteer.launch({
+  //   headless: 'new',
+  //   args: [
+  //     '--no-sandbox',
+  //     '--disable-setuid-sandbox',
+  //     '--disable-dev-shm-usage',
+  //     '--disable-gpu',
+  //     '--no-first-run',
+  //     '--no-zygote',
+  //     '--single-process', // CRITICAL for Render
+  //     '--disable-extensions',
+  //     '--disable-web-security',
+  //     '--disable-features=IsolateOrigins,site-per-process'
+  //   ],
+  //   // Add these for Render compatibility
    
-    timeout: 60000
-  });
+  //   timeout: 60000
+  // });
+
+
+  browserLaunchPromise = puppeteer.launch({
+  headless: "new",
+  executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
+  args: [
+    "--no-sandbox",
+    "--disable-setuid-sandbox",
+    "--disable-dev-shm-usage",
+    "--disable-gpu",
+    "--no-first-run",
+    "--no-zygote",
+    "--disable-extensions",
+    "--disable-web-security",
+    "--disable-features=IsolateOrigins,site-per-process"
+  ],
+  timeout: 60000
+});
+
 
   try {
     browserInstance = await browserLaunchPromise;
