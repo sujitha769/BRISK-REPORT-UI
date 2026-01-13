@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 
 /**
- * Index / Cover Page for Brisk Report
+ * Index / Cover Page for Due Diligence Report
  * Now correctly references data-index-id attributes
  */
 const ReportIndexPage = ({ data }) => {
@@ -111,7 +111,7 @@ const ReportIndexPage = ({ data }) => {
         {/* REPORT DETAILS */}
         <div style={styles.reportBox}>
           <div>
-            <strong>Report Name :</strong> Brisk Report
+            <strong>Report Name :</strong> Due Diligence Report
           </div>
           <div style={{ marginTop: "6px" }}>
             <strong>Report Date :</strong> {reportDate}
